@@ -1,0 +1,6 @@
+[Unit]
+Description=Tor paketini guncelle (panelden istenince)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/torpool/update-tor.sh

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Tor IP</title>
+<style>
+  :root { color-scheme: dark; }
+  body { width: 340px; margin: 0; padding: 14px; font: 13px/1.4 system-ui, Segoe UI, sans-serif; background: #1b1b24; color: #e8e8ee; }
+  h1 { font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #666; display: inline-block; }
+  .dot.on { background: #3ecf6e; } .dot.wait { background: #f0b429; } .dot.err { background: #e5484d; }
+  label { display: block; margin: 10px 0 4px; color: #a8a8b8; font-size: 12px; }
+  input, select { width: 100%; box-sizing: border-box; padding: 7px 8px; border-radius: 6px; border: 1px solid #3a3a4c; background: #262633; color: inherit; font: inherit; }
+  .row { display: flex; gap: 6px; margin-top: 6px; }
+  .row input { flex: 1; margin: 0; }
+  button { padding: 7px 10px; border-radius: 6px; border: 0; background: #7d4cdb; color: #fff; cursor: pointer; font-weight: 600; }
+  button.sec { background: #3a3a4c; }
+  button.danger { background: #c2373c; }
+  button.big { width: 100%; padding: 10px; margin-top: 10px; }
+  button.link { background: none; color: #a8a8b8; font-weight: 400; text-decoration: underline; padding: 4px 0; margin-top: 8px; }
+  button:disabled { opacity: .5; cursor: default; }
+  #info { margin-top: 12px; padding: 8px; background: #262633; border-radius: 6px; min-height: 36px; word-break: break-word; white-space: pre-line; }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: #a8a8b8; }
+  textarea { width: 100%; box-sizing: border-box; margin-top: 6px; padding: 7px 8px; border-radius: 6px; border: 1px solid #3a3a4c; background: #262633; color: inherit; font: 12px/1.4 ui-monospace, monospace; }
+  .hint { margin-top: 6px; font-size: 11px; color: #8a8aa0; }
+  #health { margin-top: 8px; font-size: 12px; color: #a8a8b8; }
+  #health.bad { color: #ff7b80; font-weight: 600; }
+  #health.good { color: #6fe39b; }
+  label.chk { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  label.chk input { width: auto; margin: 0; }
+  #msg { margin-top: 8px; font-size: 12px; color: #f0b429; white-space: pre-wrap; word-break: break-word; }
+</style>
+</head>
+<body>
+  <h1><span id="dot" class="dot"></span> Tor IP (Raspberry Pi)</h1>
+
+  <label for="addr">Pi adresi  (kurulumun verdiği  IP:8765#TOKEN  satırını yapıştırabilirsin)</label>
+  <input id="addr" placeholder="192.168.1.50:8765#TOKEN" spellcheck="false" autocomplete="off">
+  <div class="row">
+    <input id="token" type="password" placeholder="Token" spellcheck="false" autocomplete="off">
+    <button id="save" class="sec">Kaydet</button>
+  </div>
+
+  <label for="country">Çıkış ülkesi</label>
+  <select id="country"></select>
+
+  <button id="toggle" class="big">Bağlan</button>
+  <button id="newip" class="big sec" disabled>IP Değiştir</button>
+  <button id="del" class="link" hidden>Pi'daki bu profil oturumunu sil</button>
+
+  <div id="info">Durum alınıyor…</div>
+  <details id="directBox">
+    <summary>Doğrudan çıkan siteler (Tor'u kullanmaz)</summary>
+    <label class="chk"><input type="checkbox" id="directOn"> Bu sitelere Tor'suz gir</label>
+    <button id="addSite" class="sec" style="margin-top:6px;width:100%">Açık sekmedeki siteyi ekle</button>
+    <textarea id="directList" rows="6" spellcheck="false" placeholder="her satıra bir alan adı"></textarea>
+    <div class="row">
+      <button id="directSave" class="sec">Kaydet</button>
+      <button id="directReset" class="sec">Varsayılana dön</button>
+    </div>
+    <div class="hint">Bu sitelere gerçek IP'nle girersin. Banka, e-devlet gibi Tor'u engelleyen siteler için. Alt alan adları da dahildir.</div>
+  </details>
+  <details id="onlyBox">
+    <summary>Sadece seçtiğim siteler Tor'dan çıksın</summary>
+    <label class="chk"><input type="checkbox" id="onlyOn"> Sadece bu siteler Tor'dan, gerisi doğrudan</label>
+    <label class="chk"><input type="checkbox" id="onlyAuto"> Tor kapalıyken siteye girersem otomatik bağlan</label>
+    <button id="onlyAdd" class="sec" style="margin-top:6px;width:100%">Açık sekmedeki siteyi ekle</button>
+    <textarea id="onlyList" rows="5" spellcheck="false" placeholder="her satıra bir alan adı"></textarea>
+    <div class="row"><button id="onlySave" class="sec">Kaydet</button></div>
+    <div class="hint">Bu sitelere her istek baştan Tor'dan gider; Tor bağlı değilse ya da Pi'a ulaşılamazsa site açılmaz (gerçek IP'nle de açılmaz). Otomatik bağlan açıksa eklenti Tor'u kendisi açar ve hazır olunca sayfayı yeniler (10–60 sn sürebilir). Diğer siteler normal hızda doğrudan açılır. Alt alan adları dahildir.</div>
+  </details>
+  <div id="health"></div>
+  <label class="chk"><input type="checkbox" id="delOnStop"> Kes'e basınca Pi'daki oturumu da sil</label>
+  <label class="chk"><input type="checkbox" id="delOnClose"> Tarayıcı kapanınca bağlantıyı kes ve Pi'daki oturumu sil</label>
+  <label class="chk"><input type="checkbox" id="notify"> Bağlantı kopunca bildirim gönder</label>
+  <button id="checknow" class="link">Şimdi kontrol et</button>
+  <div id="msg"></div>
+
+  <script src="lib.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+{
+  "name": "tor-ip-desktop",
+  "version": "1.0.0",
+  "description": "Raspberry Pi üzerindeki Tor'a bağlanan, profil başına ayrı IP ve ülke seçimi sağlayan masaüstü uygulaması",
+  "main": "main.js",
+  "author": "EHM Bilgisayar",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/test.js && node test/sysproxy.test.js && node test/fastip.test.js && node test/health.test.js && node test/tailscale.test.js && node test/sites.test.js && node test/killswitch.test.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "local.ehm.torip",
+    "productName": "Tor IP",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**",
+      "renderer/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Tor-IP-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Tor-IP-Portable-${version}.${ext}"
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "Tor-IP-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Network",
+      "icon": "build/icon.png",
+      "artifactName": "Tor-IP-${version}-linux-${arch}.${ext}"
+    }
+  },
+  "productName": "Tor IP"
+}

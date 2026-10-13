@@ -1,0 +1,18 @@
+[Unit]
+Description=Tor havuzu (tarayici profili basina ayri Tor)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+User=torpool
+Group=torpool
+ExecStart=/usr/bin/python3 /opt/torpool/torpool.py
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

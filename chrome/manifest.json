@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Tor IP (Raspberry Pi)",
+  "version": "2.0",
+  "description": "Ağdaki Raspberry Pi üzerindeki Tor'a bağlanır; ülke seç, tek tıkla IP değiştir.",
+  "permissions": [
+    "proxy",
+    "storage",
+    "privacy",
+    "alarms",
+    "notifications",
+    "activeTab",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "https://check.torproject.org/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tor IP"
+  },
+  "icons": {
+    "128": "icon.png"
+  }
+}

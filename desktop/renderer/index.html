@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+<title>Tor IP</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <aside>
+    <h1>Tor IP <small>Raspberry Pi</small></h1>
+
+    <section class="box">
+      <label for="addr">Pi adresi (<code>IP:8765#TOKEN</code> yapıştırabilirsin)</label>
+      <input id="addr" placeholder="192.168.1.50:8765#TOKEN" spellcheck="false" autocomplete="off">
+      <input id="token" type="password" placeholder="Token" spellcheck="false" autocomplete="off">
+      <button id="savePi" class="sec">Kaydet ve dene</button>
+      <div id="piMsg" class="msg"></div>
+    </section>
+
+    <h2>Profiller</h2>
+    <ul id="list"></ul>
+    <button id="add" class="sec">+ Yeni profil</button>
+  </aside>
+
+  <main>
+    <div id="empty" class="hint" hidden>Soldan bir profil seç.</div>
+
+    <div id="detail" hidden>
+      <label for="name">Profil adı</label>
+      <input id="name" maxlength="40" spellcheck="false">
+
+      <label for="country">Çıkış ülkesi</label>
+      <select id="country"></select>
+
+      <div class="status"><span id="dot" class="dot"></span><span id="state">Durum alınıyor…</span></div>
+      <div class="row tight">
+        <button id="newip" class="sec" disabled>IP Değiştir</button>
+        <button id="showip" class="sec">Çıkış IP'sini göster</button>
+      </div>
+      <div id="ip" class="ip"></div>
+      <div id="health" class="health"></div>
+      <div class="row tight">
+        <label class="chk"><input type="checkbox" id="notify"> Bağlantı kopunca bildirim gönder</label>
+        <button id="checkNow" class="link">Şimdi kontrol et</button>
+      </div>
+
+      <div class="mode">
+        <h3>En hızlı IP'yi bul</h3>
+        <p class="hint">Yeni IP alır, gecikmesini (ping) ölçer; hedefin altındaysa durur, değilse IP'yi değiştirip tekrar dener. Hedefe ulaşılamazsa en düşük gecikmeli IP'ye geri dönüp sabitler.</p>
+        <div class="row tight">
+          <div><label for="fastTarget">Hedef ping (ms)</label><input id="fastTarget" type="number" min="50" max="5000" value="700"></div>
+          <div><label for="fastTries">En çok deneme</label><input id="fastTries" type="number" min="1" max="30" value="8"></div>
+        </div>
+        <button id="fastBtn" class="big sec" disabled>En hızlı IP'yi bul</button>
+        <div id="fastMsg" class="msg"></div>
+      </div>
+
+      <div class="mode">
+        <h3>Kayıtlı iyi çıkışlar</h3>
+        <p class="hint">"En hızlı IP'yi bul" hedefin altında kalan IP'leri buraya kaydeder. İstediğin zaman o IP'ye geri dönebilirsin (Pi'da o röleye sabitlenir). Röle kapanmışsa geri dönülemez, listeden silebilirsin.</p>
+        <ul id="goodList" class="goodlist"></ul>
+        <div id="goodEmpty" class="hint">Henüz kayıtlı çıkış yok.</div>
+        <button id="saveCurrent" class="sec" disabled>Şu anki IP'yi kaydet</button>
+      </div>
+
+      <div class="mode">
+        <h3>Uygulama tabanlı <span class="tag">önerilen</span></h3>
+        <p class="hint">Sadece bu profilin tarayıcısı Tor'dan çıkar. Sistem ayarlarına dokunmaz; ayrı bir tarayıcı profili açılır, WebRTC ve DNS sızıntısına karşı korumalıdır. Pi'a ulaşılamazsa tarayıcı doğrudan çıkmaz.</p>
+        <label for="browser">Tarayıcı</label>
+        <select id="browser"></select>
+        <div id="appNote" class="msg" hidden>Discord: yazı sohbeti ve giriş Tor'dan çıkar. Sesli/görüntülü görüşme Tor üzerinden çalışmaz ve gerçek IP'ni gösterebilir; o kısımlar için kullanma. Discord ayrı bir oturumla açılır (normal Discord'unu etkilemez).</div>
+        <button id="open" class="big">Tarayıcıyı aç</button>
+      </div>
+
+      <div class="mode" id="sysCard">
+        <h3>Sistem geneli <span id="sysTag" class="tag on" hidden>açık</span></h3>
+        <p class="hint">Bilgisayarın proxy ayarı bu profile bağlanır: ayarı kullanan tüm uygulamalar (Chrome, Edge, Firefox ve diğerleri) Tor'dan çıkar.</p>
+        <div id="sysState" class="hint"></div>
+        <button id="sysBtn" class="big sec">Sistemi bu profile bağla</button>
+        <button id="sysTest" class="sec" hidden>Sistem modunu test et</button>
+        <div id="sysResult" class="msg"></div>
+        <div id="ksBox" class="ksbox">
+          <label class="chk"><input type="checkbox" id="ksOn"> Kill switch (güvenlik duvarı)</label>
+          <p class="hint">Sistem modu açıkken Tor/Pi dışına giden her bağlantıyı keser; proxy'yi yok sayan uygulamalar ve kopan Tor gerçek IP'ni sızdıramaz. Yönetici izni ister. Tor ya da Pi koparsa internet tamamen kesilir; modu kapatınca geri gelir. Pi Tailscale üzerindeyse kullanılamaz.</p>
+          <div id="ksMsg" class="msg"></div>
+        </div>
+        <ul id="sysNotes" class="notes"></ul>
+      </div>
+
+      <div class="mode">
+        <h3>Doğrudan çıkan siteler <span class="tag">tüm profiller</span></h3>
+        <p class="hint">Bu sitelere Tor'suz, gerçek IP'nle girersin. Banka, e-devlet gibi Tor'u engelleyen siteler için. Alt alan adları da dahildir. Her satıra bir alan adı yaz. Açık tarayıcılarda geçerli olması için tarayıcıyı yeniden aç; sistem modunda ve Windows'ta anında uygulanır.</p>
+        <label class="chk"><input type="checkbox" id="directOn"> Bu sitelere Tor'suz gir</label>
+        <textarea id="directList" rows="6" spellcheck="false"></textarea>
+        <div class="row tight">
+          <button id="directSave" class="sec">Kaydet</button>
+          <button id="directReset" class="sec">Varsayılana dön</button>
+        </div>
+        <div id="directMsg" class="msg"></div>
+      </div>
+
+      <div id="msg" class="msg"></div>
+
+      <div class="foot">
+        <span></span>
+        <button id="del" class="link danger">Profili sil</button>
+      </div>
+
+      <p class="hint small">
+        IP Değiştir ve ülke seçimi, iki modda da sadece bu profili etkiler. IP'yi değiştirince açık bağlantılar kapanır, sayfaları yenile.
+      </p>
+    </div>
+  </main>
+</div>
+<script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,303 @@
+TOR IP (RASPBERRY PI) - KURULUM
+================================
+
+Mantik: Pi'da her tarayici profili icin AYRI bir Tor calisir (ayri IP, ayri ulke, ayri "IP degistir").
+Eklentiyi her bilgisayara Pi'in kendi indirme sayfasindan kurarsin; adres ve token icinde hazir gelir.
+
+
+1) PI TARAFI (bir kez)
+----------------------
+a) TUM "torpool" klasorunu Pi'a kopyala (chrome, firefox ve pi klasorleri yan yana kalmali):
+       scp -r torpool kullanici@PI_IP:~/torpool
+b) Pi'da:   cd ~/torpool/pi && sudo bash install.sh
+c) Sonunda su baglanti cikar (token'li, kopyala):
+       http://192.168.1.50:8765/?t=TOKEN
+   Baglantiyi tekrar gormek icin install.sh'yi yeniden calistir (ayarlar silinmez).
+d) Router'dan Pi'a sabit IP ver (DHCP rezervasyonu); yoksa adres degisince eklentiyi yeniden kurman gerekir.
+
+Tor engelliyorsa (Turkiye'de olabilir): Pi'da  sudo nano /etc/torpool/bridges.txt  dosyasina
+her satira bir kopru yaz (bridges.torproject.org veya Telegram @GetBridgesBot), sonra
+sudo systemctl restart torpool.  Kopruyu tek yerde, Pi'da ayarlarsin; tum cihazlar yararlanir.
+
+Kaldirmak icin:  sudo bash uninstall.sh
+
+
+2) HER BILGISAYARDA: CHROME / EDGE / BRAVE
+------------------------------------------
+a) Tarayicida 1c'deki baglantiyi ac -> "Eklentiyi indir (zip)".
+b) Zip'i kalici bir klasore cikar (klasoru silme, eklenti oradan calisir).
+c) chrome://extensions -> sag ustten "Gelistirici modu" ac -> "Paketlenmemis oge yukle" -> klasoru sec.
+d) Eklenti simgesine tikla: Pi adresi ve token hazir gelir. Ulke sec -> Baglan.
+Her Chrome profilinde (hesabinda) ayri ayri yukle; her profilin Pi'da KENDI Tor'u olur.
+Chrome her acilista "gelistirici modundaki eklentiler" uyarisi verir; calismayi engellemez, kapatabilirsin.
+
+
+3) FIREFOX
+----------
+Sayfada Firefox icin iki secenek gorunur:
+
+A) Imzali paket (normal Firefox'ta kalici) - bir kez imzalatman gerekir:
+   - https://addons.mozilla.org/developers/addon/api/key/ adresinden ucretsiz API anahtari al
+     (JWT issuer + JWT secret).
+   - Node.js olan bir bilgisayarda:
+         export AMO_JWT_ISSUER="user:12345:67"
+         export AMO_JWT_SECRET="..."
+         bash sign-firefox.sh
+     (Mozilla imzayi genelde dakikalar icinde verir; signed/ klasorune .xpi duser.)
+   - Imzali dosyayi Pi'a koy; sayfada "Firefox eklentisini indir (.xpi)" dugmesi belirir:
+         scp signed/*.xpi KULLANICI@PI_IP:/tmp/firefox.xpi
+         ssh KULLANICI@PI_IP 'sudo install -m 644 /tmp/firefox.xpi /opt/torpool/firefox.xpi'
+   - Imzali paket her cihazda ayni olmak zorunda, bu yuzden adres/token iceride gomulu OLAMAZ:
+     eklentiyi kurunca sayfadaki "Pi adresi" kutusunu bir kez yapistirirsin.
+   - Eklentiyi degistirirsen firefox/manifest.json icindeki "version" artir ve yeniden imzalat.
+   - AMO imza sirasinda bir hata mesaji verirse (ornegin manifest uyarisi), mesaji bana ilet.
+
+B) Firefox Developer Edition / ESR (imzasiz, adres gomulu zip):
+   - about:config -> xpinstall.signatures.required = false
+   - Sayfadaki "Firefox zip" dosyasini .xpi olarak yeniden adlandirip Firefox'a surukle.
+   - Normal Firefox'ta calismaz.
+
+Denemek icin (imzasiz, gecici): about:debugging#/runtime/this-firefox -> "Gecici Eklenti Yukle" ->
+cikardigin zip'teki manifest.json. Firefox kapaninca silinir.
+Firefox'ta proxy istek bazli calisir ve Pi'a ulasilamazsa istek basarisiz olur (dogrudan cikmaz).
+
+
+4) KULLANIM
+-----------
+- Baglan:      Pi'da bu profil icin Tor acilir; hazir olunca proxy devreye girer, rozet "TOR" olur.
+- IP Degistir: sadece BU profilin IP'sini degistirir (digerleri etkilenmez). Tor ~10 sn'de bir izin verir.
+- Ulke:        sadece bu profili etkiler. Secilen ulkede cikis rolesi yoksa IP alinamaz; "Rastgele" dene.
+- Kes:         proxy kapanir, Pi'daki Tor hazir kalir (sonraki Baglan aninda olur).
+- "Pi'daki bu profil oturumunu sil": bu profilin Tor'unu Pi'dan kaldirir (kaynak bosaltir).
+  Kullanilmayan oturumlar 72 saat sonra otomatik silinir; tarayici acilinca yeniden olusturulur.
+
+
+5) BILMEN GEREKENLER
+--------------------
+- Indirme sayfasi ve zip'ler token icerir: token'li baglanti sadece ev agindaki cihazlarla paylas.
+  Token degisirse (config.json'da) eklentileri yeniden indir.
+- Yerel ag adresleri (192.168.x.x, 10.x.x.x, 172.16-31.x.x, localhost) Tor'a girmez, dogrudan gider
+  (router, NAS, Pi'in kendisine erisim bozulmasin diye).
+- Pi'a ulasilamazsa eklenti proxy'yi KALDIRMAZ: trafik kesilir, dogrudan cikmaz (rozet "!").
+  Normal gezmek icin popup'ta "Kes"e bas. Evden disarida kullanmak icin Pi'i internete acma;
+  Tailscale veya WireGuard kullan.
+- Token ev aginda duz HTTP ile gider; ev agin guvenliyse sorun degil. Servis sadece ev agi adreslerinden
+  istek kabul eder (/etc/torpool/config.json -> allowed_cidrs).
+- Pi kapasitesi: her profil icin ayri bir Tor sureci (~40-60 MB RAM). Varsayilan sinir 20 oturum
+  (max_sessions). Pi 4 / 4 GB ile 10-15 profil rahattir.
+- WebRTC sizintisini engellemek icin eklenti WebRTC'yi kisitlar; bazi goruntulu gorusme siteleri bozulabilir.
+- Gercek IP gorunurse (sizinti): eski sekmeleri kapat, chrome://flags/#enable-quic ayarini Disabled yap,
+  eklentinin gizli pencerede izinli oldugunu kontrol et.
+
+
+6) MASAUSTU UYGULAMASI (Windows / Mac)  -  "desktop" klasoru
+-----------------------------------------------------------
+Eklentiyle ayni mantik, ayni Pi servisi: her PROFIL Pi'da kendi Tor'unu alir (ayri IP, ayri ulke, ayri
+"IP Degistir"). Fark: uygulama tarayiciyi (Chrome / Edge / Brave / Firefox, otomatik bulunur) profile ozel
+bir veri klasoru ve hazir proxy ayariyla acar. (Bu "Uygulama tabanli" moddur; Pi'a ulasilamazsa tarayici
+dogrudan cikmaz.) Chrome icin WebRTC kisitlanir, Firefox icin DNS de Tor uzerinden cozulur.
+Uygulamanin actigi tarayici profilleri senin normal Chrome/Firefox profilinden AYRIDIR (cerezler, oturumlar ayri).
+
+SAGLIK KONTROLU (eklentiler ve masaustu uygulamasi):
+  Baglanti acikken her dakika Pi'a ve gercek cikis IP'sine bakilir. Art arda 2 kotu olcumde bildirim gelir:
+  - "Baglanti koptu": Pi'a ulasilamiyor ya da Tor'dan internete cikilamiyor.
+  - "DIKKAT, trafik Tor'dan cikmiyor": gorunen IP Tor agi disinda (baska bir eklenti ya da program proxy'yi bozmus olabilir).
+  - "Baglanti geldi": duzelince bir kez haber verir.
+  Eklentide rozet de degisir (TOR / ! / !!). Popup'tan "Simdi kontrol et" ve bildirimi kapatma secenegi var.
+  Masaustu uygulamasinda yalnizca bu calismada tarayicisi ya da sistem modu acilan profiller izlenir.
+  Not: Bu bir kill switch DEGILDIR; yalnizca uyarir. Chrome/Firefox eklentisinde proxy acikken Tor koparsa zaten
+  trafik kesilir (dogrudan cikmaz); masaustu sistem modunda bu garanti yoktur.
+
+IKI AYRI MOD (profil ekraninda iki ayri kart):
+ 1) UYGULAMA TABANLI (onerilen): sadece uygulamanin actigi tarayici Tor'dan cikar. Sisteme dokunmaz.
+ 2) SISTEM GENELI: bilgisayarin proxy ayari secili profilin Tor'una baglanir; bu ayari kullanan tum
+    uygulamalar Tor'dan cikar. "Sistem proxy'sini kapat" ile ya da uygulamadan cikinca eski ayar geri gelir.
+    - Windows: Internet Ayarlari (kayit defteri) + yerel PAC dosyasi, SOCKS5. Yonetici hakki gerekmez.
+    - Mac: aktif ag servislerine (Wi-Fi, Ethernet...) "networksetup" ile SOCKS proxy yazilir; sifre sorabilir.
+    Dikkat: proxy ayarini yok sayan uygulamalar (bazi oyunlar, VPN, torrent, bazi komut satiri araclari) dogrudan
+    cikar; WebRTC/UDP trafigi sizabilir (kesin gizlilik icin uygulama tabanli modu kullan); Windows'ta uygulama
+    cokerse proxy bir sonraki acilista temizlenir, o ana kadar baglanti Tor'a gitmez/ya da kopar.
+    Sistem modunu bir seferde tek profile baglayabilirsin.
+    Sistem modunu actiktan sonra uygulama kendini test eder ("Sistem modunu test et" dugmesi): "Calisiyor" yazmiyorsa
+    mesajdaki "Sistemin proxy'si" satirina bak. Windows'ta Ayarlar > Ag > Proxy'de "Kurulum betigi kullan" acik
+    gorunmeli; Mac'te Ag > Ayrintilar > Proxy'ler'de SOCKS proxy isaretli olmali. Acik tarayicida sayfayi yenile.
+
+Ilk kullanim: Pi adresini (IP:8765#TOKEN) ve token'i yapistir -> "Kaydet ve dene" -> profil sec ->
+ulke sec -> "Tarayiciyi ac". "IP Degistir" ve "Cikis IP'sini goster" ayni ekranda.
+
+A) Derleme - GitHub Actions ile (onerilen, hem .exe hem .dmg verir, kendi bilgisayarinda arac kurmazsin)
+   1. Tum torpool klasorunu GitHub'a yukle (.github klasoru dahil).
+   2. Depoda Actions sekmesi -> "Masaustu uygulamasini derle" -> Run workflow.
+   3. Bitince calismanin sayfasindan "tor-ip-windows-latest" ve "tor-ip-macos-latest" dosyalarini indir.
+      (Depoya v1.0.0 gibi bir etiket gonderirsen dosyalar "Releases" bolumune de eklenir.)
+
+B) Derleme - kendi bilgisayarinda (Node.js 20+ gerekir)
+   cd desktop
+   npm install
+   npm start              # derlemeden dene
+   npm run dist:win       # Windows'ta: dist/ icine kurulum (.exe) ve tasinabilir (.exe)
+   npm run dist:mac       # Mac'te:     dist/ icine .dmg (Intel ve Apple Silicon)
+   (Windows paketi Windows'ta, Mac paketi Mac'te derlenir; ikisini tek yerden almak icin A yolunu kullan.)
+
+Ilk acilis uyarilari (uygulama imzali degil; resmi imza icin Windows kod imzalama sertifikasi ve
+Apple Developer hesabi (yillik ucretli) gerekir):
+- Windows: SmartScreen "Daha fazla bilgi" -> "Yine de calistir".
+- Mac: uygulamaya sag tik -> "Ac". "Hasarli" derse Terminal'de:  xattr -cr "/Applications/Tor IP.app"
+- Mac'te tarayici uygulamalari /Applications veya ~/Applications icinde olmali (otomatik bulunmasi icin);
+  baska yerdeyse profilde "Baska tarayici sec..." ile gosterebilirsin.
+
+C) Mac'te derleme araci kurmadan (Node/Xcode/Homebrew GEREKMEZ)  -  desktop/Mac-Kur.sh
+   Mac-Kur.sh ile uygulama dosyalari (main.js, lib, renderer, ...) AYNI klasorde olmali.
+   Terminal'de:   bash ~/Downloads/Tor-IP-Mac/Mac-Kur.sh
+   Betik resmi Electron paketini indirir (~120 MB), "Tor IP.app" olusturur, Uygulamalar klasorune koyar ve acar.
+   Apple Silicon ve Intel'i kendisi ayirt eder. Imzasiz oldugu icin yine de sunu gerekebilir:
+       xattr -cr "/Applications/Tor IP.app"
+
+EV / OFIS: Pi baska bir agdaysa (CGNAT, port yonlendirme yok) TAILSCALE kullan
+  Pi ve her bilgisayarda Tailscale kur (ayni hesap), Pi adresi olarak Tailscale IP'sini yaz (100.x.y.z:8765#TOKEN).
+  Pi'da /etc/torpool/config.json -> allowed_cidrs listesine "100.64.0.0/10" EKLE (varsayilan yerel araliklari silme!).
+  Tailscale'in kendiliginden acilmasi: Pi'da "sudo systemctl enable --now tailscaled"; Windows/Mac'te Tailscale
+  varsayilan olarak oturum acilinca baslar. Masaustu uygulamasi Pi adresi Tailscale adresiyse baglanirken Tailscale'i
+  kontrol eder, kapaliysa "tailscale up" ile acmayi dener (kapatmaz). Eklentiler Tailscale'i baslatamaz, sadece uyarir.
+
+ULKE LISTESINDE CIKIS SAYISI: "Almanya (350)" gibi yazar; 5'ten azsa "(az: N)", hic yoksa "(cikis yok!)" gorunur.
+  Sayilari Pi, Tor Projesi'nin Onionoo servisinden saatte bir indirir (Pi'in internete erisimi yeterli) ve
+  eklentilere/uygulamaya verir. Alinamazsa liste sade kalir. Sayi, o ulkede calisan "Exit" rolelerinin sayisidir;
+  secilen ulkede gercekte kullanilabilir cikis bunun biraz altinda olabilir. Pi'da config.json'a "exits_ttl" (sn) ile
+  yenileme suresi degistirilebilir.
+
+=====================================================================
+YENI OZELLIKLER (site kurali, durum paneli, otomatik guncelleme, iyi cikislar, kill switch)
+=====================================================================
+
+1) DOGRUDAN CIKAN SITELER (eklentiler + masaustu uygulamasi)
+   Banka, e-devlet gibi Tor'u engelleyen siteler Tor'suz, gercek IP ile acilir. Alt alan adlari dahildir
+   (gov.tr -> turkiye.gov.tr). Varsayilan liste elle derlendi (gov.tr, bel.tr ve Turk bankalari); eksik ya da guncelligini
+   yitirmis olabilir, kendi bankani ekle. Eklenti: popup > "Dogrudan cikan siteler" (acik sekmedeki siteyi tek tikla
+   ekleyebilirsin). Masaustu: profil ekraninin altindaki kart (tum profiller icin gecerli).
+   - Eklenti ve uygulama tabanli modda degisiklik acik sekmelerde/tarayicida yenileme ya da yeniden acma ister.
+   - Masaustu sistem modunda Windows'ta PAC aninda guncellenir, Mac'te istisna listesi yeniden yazilir.
+   - Bu sitelere gercek IP'nle girdigini unutma; Tor'un korumasi bu siteler icin yoktur.
+
+2) PI DURUM PANELI
+   Tarayicidan:  http://PI_ADRESI:8765/status?t=TOKEN   (install.sh sonunda da yazar)
+   Her 5 saniyede yenilenir: oturumlar (ulke, durum, bootstrap), TAHMINI cikis IP'si ve role adi, bosta suresi,
+   Tor surumu. Satirdaki "Olc" dugmesi gercek bir olcum yapar (IP, sure, Tor'dan mi). Token adres cubugundan silinir.
+   Tor guncellenince panel uyari verir; "Bostaki oturumlari yenile" 10 dakikadan uzun bosta kalanlari yeniden baslatir
+   (kullanimdaki oturumlara dokunmaz).
+
+3) PI'DA OTOMATIK GUNCELLEME
+   Pi'da (pi klasorunden):  sudo bash auto-update.sh      Geri almak icin:  sudo bash auto-update-kapat.sh
+   unattended-upgrades kurar (Debian/Raspberry Pi OS guvenlik ve normal guncellemeleri, Tor deposu varsa o da).
+   Pi'in kendisini yeniden baslatmak icin (kernel gibi guncellemeler sonrasi, her gece 04:30'da, yalnizca gerekirse):
+       sudo bash auto-update.sh --reboot
+   Bu secenek olmadan Pi kendiliginden yeniden BASLAMAZ. Acilista torpool ve butun oturumlar kendiliginden geri gelir.
+   Tor paketi guncellenince: BOSTA (10 dk+) olan eski surum oturumlari torpool kendisi yeniler (5 dk'da bir kontrol);
+   kullanimdaki oturumlara dokunmaz, onlar bosa cikinca yenilenir. Panelde "Tor guncellendi" uyarisi eski oturum kalmayinca kalkar.
+   Kayitlar: /var/log/unattended-upgrades.
+   Dosya yedekleri /var/backups/torpool altinda. Bu betigi gercek bir Pi'da ben calistiramadim: ilk seferde
+   "sudo unattended-upgrade --dry-run -d" ciktisina bak.
+
+4) KAYITLI IYI CIKISLAR (masaustu)
+   "En hizli IP'yi bul" hedefin altinda kalan IP'leri profilin "Kayitli iyi cikislar" listesine kendisi ekler (en fazla 20,
+   ping'e gore sirali). "Cikis IP'sini goster"den sonra "Su anki IP'yi kaydet" ile elle de eklenir.
+   "Bu IP'ye gec": Pi'da o roleye sabitler ve gercekten o IP geldi mi dogrular; role kapanmissa sabitleme kaldirilir,
+   listeden silebilirsin. "IP Degistir" sabitlemeyi birakir.
+
+5) KILL SWITCH (masaustu, sistem modu, ISTEGE BAGLI, varsayilan kapali)
+   Sistem modu aciksa Tor/Pi disina giden her baglantiyi guvenlik duvariyla keser.
+   - Windows: netsh kurallari (TorIP-KS-v4 / v6), UAC ister. Mac: pf ("com.apple/torip"), yonetici sifresi ister.
+   - Yerel ag, loopback ve Pi serbest. Tor ya da Pi koparsa internet tamamen kesilir; modu kapatinca geri gelir.
+   - Pi bir TAILSCALE adresindeyse KULLANILAMAZ (Tailscale'in kendi baglantisini da keser). Evden Tailscale ile
+     baglanirken kill switch yok; ofiste (yerel ag) calisir.
+   - Kapatinca, uygulamadan cikinca ve cokme sonrasi acilista kurallar kaldirilir.
+   - ACIL DURUM, internet kesik kaldiysa: Windows'ta Kill-Switch-Kapat.bat'a sag tik > Yonetici olarak calistir;
+     Mac'te Terminal'de  bash Kill-Switch-Kapat.command  (ya da  sudo pfctl -a com.apple/torip -F all).
+   - Windows ve Mac'te GERCEK sistemde denenmedi (yalnizca sahte komutlarla test edildi). Ilk kullanimda once Kill-Switch-Kapat
+     dosyasini yanina hazirla. Mac'te pf, macOS surumune gore farkli davranabilir.
+
+KENDILIGINDEN TOPARLANMA (Pi):
+  - Pi yeniden baslarsa / elektrik kesilirse: torpool servisi acilista baslar (systemctl enable), oturumlar kayitli
+    durumdan geri gelir (20 oturum yaklasik 1 dakikada, kademeli). Eklentiler ve uygulama kendilerini yeniden baglar.
+  - torpool servisi cokerse ya da kapanirsa: systemd 5 sn sonra yeniden baslatir (Restart=always, vazgecmez).
+  - Bir oturumun Tor'u cokerse: 30 sn icinde yeniden baslatilir (eskiden 5 dk idi).
+  - Servisi guncel dosyalarla almak icin Pi'da bir kez:  sudo bash install.sh
+
+--- Sadece seçtiğin siteler Tor'dan (Chrome/Firefox eklentisi) ---
+Eklenti > "Sadece seçtiğim siteler Tor'dan çıksın": siteleri yaz, Kaydet, kutuyu işaretle, "Bağlan"a bas.
+Listedeki siteler (ve alt alan adları) baştan Tor'dan gider; Pi'a ulaşılamazsa açılmaz, gerçek IP'nle açılmaz.
+Diğer siteler doğrudan açılır. Bu modda "dış IP kontrolü" yapılmaz (genel trafik zaten Tor'da değil).
+
+--- Hazır oturum havuzu (Pi) ---
+Pi durum paneli (/status) > "Hazır oturum havuzu": sayıyı yaz, Kaydet. Pi o kadar boşta Tor oturumunu önceden açık tutar.
+Eklenti/uygulama ilk kez "Bağlan" deyince hazır oturumlardan birini devralır (bekleme yok), Pi yenisini açar.
+Her havuz oturumu Pi'a yük ve bant demektir; 2-3 genelde yeter. 0 = kapalı. Havuz oturumları max_sessions'a dahildir.
+
+--- Kısa token ---
+Yeni kurulumlarda token 6 karakter (küçük harf+rakam). En az 6 karakter kabul edilir.
+Kısa token kaba kuvvetle denenmesin diye: bir IP 10 dk içinde 8 kez yanlış token girerse 10 dk kilitlenir.
+Mevcut token'ı değiştirmek: sudo nano /etc/torpool/config.json  ("token" satırı), sonra sudo systemctl restart torpool
+Sonra eklenti/uygulamalarda token'ı yeniden gir (ya da Pi'nın indirme sayfasından yeniden indir).
+
+--- Sadece-liste modunda koruma ve otomatik bağlanma ---
+"Sadece seçtiğim siteler" açıkken Tor bağlı DEĞİLSE listedeki siteler açılmaz (gerçek IP'yle asla açılmaz).
+"Tor kapalıyken siteye girersem otomatik bağlan" işaretliyse: listedeki siteye girince eklenti Pi'da oturumu açar,
+Tor hazır olunca sayfayı kendisi yeniler (ilk seferde 10-60 sn; Pi'da hazır oturum havuzu varsa çok daha kısa).
+Chrome eklentisi bunun için "webNavigation" iznini ister (Chrome "gezinti geçmişini oku" uyarısı gösterir); eklenti geçmişi saklamaz.
+Chrome'da eklentiyi yenilemeyi unutma (chrome://extensions > yenile).
+
+--- Varsayılan "doğrudan çıkan siteler" ---
+Bankalar ve e-devlet'e ek olarak yapay zekâ siteleri , GitHub, X (x.com) ve kripto borsaları (binance, okx, bybit, coinbase, paribu, btcturk...) (github.com, githubusercontent.com, github.io, ghcr.io...) de varsayılan listede: claude.ai, anthropic.com, google.com (gstatic/googleapis dahil),
+openai.com/chatgpt.com, perplexity.ai, x.ai/grok.com, mistral.ai, deepseek.com, poe.com, copilot.microsoft.com, openrouter.ai, groq.com, huggingface.co ve benzerleri.
+Daha önce kendi listeni kaydettiysen yeni siteler bir kez otomatik eklenir, senin eklediklerine dokunulmaz. İstemediğini listeden silebilirsin.
+
+--- "Sadece seçtiğim siteler" hazır listesi ---
+Eklentide bu liste hazır gelir: bitcointalk.org, check.torproject.org, ip-adresim.net, browserleaks.com.
+Daha önce kendi listeni kaydettiysen bu siteler bir kez eklenir. Modu açana kadar bir şey değişmez.
+
+--- Panelden Tor güncelleme ---
+Durum panelinde "Tor sürümü" kutusu: kurulu sürüm ve apt'taki en yeni sürüm yazar. "Tor'u güncelle" düğmesi paketi yükseltir,
+bitince boştaki eski sürüm oturumlar kendiliğinden yenilenir (kullanımdaki oturumlara dokunulmaz).
+Nasıl çalışır: servis root değil; düğme state_dir'e (/var/lib/torpool/update-request) bir istek dosyası bırakır, systemd
+(torpool-update.path) bunu görünce root olarak yalnızca "apt-get install --only-upgrade tor" çalıştırır (update-tor.sh).
+Ayrıntı günlüğü: /var/lib/torpool/update.log
+Gerekli: Pi'da yeni sürümle  sudo bash install.sh  (güncelleme servisini kurar).
+"En yeni" sürüm Pi'ın apt listesindeki sürümdür: Debian depoda henüz yoksa 'güncel' görünür. Tor Project deposu (deb.torproject.org) daha erken verir.
+
+--- Otomatik Tor güncelleme ---
+Panel > "Tor sürümü" > "Otomatik güncelle" kutusu: işaretliyse Pi 6 saatte bir "apt update" yapıp yalnızca tor paketini yükseltir
+(yeni sürüm yoksa bir şey değişmez). Güncelleme bitince boştaki eski sürüm oturumları kendiliğinden yenilenir.
+Ayar Pi'da /var/lib/torpool/settings.json içinde saklanır. Gerekli: yeni sürümle  sudo bash install.sh
+
+--- Tor Project deposu (yeni Tor sürümleri daha erken) ---
+Debian'ın kendi deposu Tor güvenlik sürümlerini birkaç gün geriden verebilir. Tor Project'in deposunu eklemek için (Pi'da):
+    sudo bash tor-repo-ekle.sh
+Betik: mimariyi (yalnızca arm64/amd64; 32-bit armhf desteklenmez) ve Debian kod adını bulur, imza anahtarını indirip PARMAK IZINI
+doğrular (uyuşmazsa hiçbir şey yazmadan durur), depoyu ekler, apt update + tor kurulumunu yapar; update hata verirse depoyu geri alır.
+Geri almak: sudo bash tor-repo-ekle.sh --kaldir
+Depo eklendikten sonra panel "Pakette en yeni" sürümü Tor Project'ten gösterir; "Tor'u güncelle" ve otomatik güncelleme bunu kullanır.
+Parmak izini şu sayfadan da doğrula: https://support.torproject.org/apt/tor-deb-repo/
+
+--- "Oturum sınırı doldu (20)" hatası ---
+Pi'daki oturum sayısı max_sessions'a (varsayılan 20) ulaştı. Hazır havuz oturumları da sayılır.
+Çözüm (panelde, /status?t=TOKEN): satırdaki "Sil" ile tek oturumu, "1 saatten uzun boşta olanları sil" ile toplu temizle.
+Kalıcı çözüm: /etc/torpool/config.json içinde "max_sessions" değerini artır (Pi'ın gücüne göre; her oturum bir Tor süreci) ve
+"idle_hours" değerini düşür (boşta kalan oturum daha erken silinir), sonra  sudo systemctl restart torpool
+
+--- Boşta silme süresi ve "Kes" ---
+Pi paneli > "Boşta kalan oturumun silinme süresi": saat cinsinden yaz, Kaydet (varsayılan 72, en az 1). Ayar Pi'da kalıcıdır
+(/var/lib/torpool/settings.json) ve config.json'daki idle_hours'u geçersiz kılar. Hazır havuz oturumları silinmez.
+Eklenti popup'ı: "Kes'e basınca Pi'daki oturumu da sil" (varsayılan açık). Açıkken Kes, Pi'da yer açar; sonraki Bağlan yeni oturum
+açar (hazır oturum havuzu açıksa hemen, değilse Tor'un bağlanmasını bekler). Kapatırsan Kes yalnızca proxy'yi kapatır.
+
+--- Hazır oturum havuzu artık varsayılan olarak açık (2) ---
+Yeni kurulumda ve ayar dosyası olmayan Pi'larda havuz 2 oturumla açılır: bağlanan istemci Tor'un bağlanmasını beklemez.
+Panelden değiştirebilirsin (0 = kapalı). config.json'a "pool_size": N yazarak da başlangıç değerini belirleyebilirsin.
+Not: Daha önce havuzu panelden kaydettiysen senin değerin korunur.
+
+--- Pi yeniden başlayınca oturumlar ---
+Eski davranış: Pi açılınca kayıtlı TÜM oturumların Tor'u birden başlıyor, Pi yetişemeyip %0'da kalıyor ve boşta süreleri sıfırlanıyordu
+(bu yüzden "Oturum sınırı doldu (20)" hatası çıkıyordu). Yeni davranış:
+- Boşta süresi (last_active) kalıcı: Pi yeniden başlasa da silinme süresi işlemeye devam eder.
+- Açılışta yalnızca hazır havuz ve son 15 dakikada kullanılan oturumlar başlar; eskiler sahibi (eklenti) istek atınca başlar.
+- Panelde "Bağlanamayanları sil": hazır OLMAYAN tüm oturumları siler (şu an bağlanmakta olanlar, yani son 30 sn içinde istek atanlar hariç). Hazır olanlara ve havuza dokunmaz. Elle curl komutu yazmaya gerek kalmaz.
